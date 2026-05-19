@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="is">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Draumakaup United 2026 — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --bg-2: #131316;
+    --bg-3: #1c1c21;
+    --line: #26262d;
+    --text: #ededf0;
+    --muted: #8a8a93;
+    --red: #DA291C;
+    --red-dim: #8a1a12;
+    --gold: #fbbf24;
+    --green: #22c55e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  body { min-height: 100vh; }
+
+  /* ---------- Topbar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(16px);
+    background: rgba(10,10,11,0.72);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 1400px; margin: 0 auto;
+    padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: radial-gradient(circle at 30% 30%, var(--red), var(--red-dim));
+    display: grid; place-items: center;
+    font-weight: 900; font-size: 16px; letter-spacing: -0.02em;
+    box-shadow: 0 0 24px rgba(218,41,28,0.4);
+  }
+  .brand-title { font-weight: 700; letter-spacing: -0.02em; font-size: 15px; }
+  .brand-sub { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .budget {
+    display: flex; align-items: center; gap: 18px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 10px 18px;
+  }
+  .budget-bar-wrap { width: 200px; height: 8px; background: #2a2a32; border-radius: 99px; overflow: hidden; }
+  .budget-bar { height: 100%; width: 62%; background: linear-gradient(90deg, var(--red), #ff6a5a); border-radius: 99px; transition: width 0.8s cubic-bezier(.2,.8,.2,1); }
+  .budget-num { font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: -0.02em; }
+  .budget-num .big { font-size: 22px; }
+  .budget-num .small { font-size: 12px; color: var(--muted); }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    max-width: 1400px; margin: 0 auto;
+    padding: 64px 28px 28px;
+  }
+  .hero h1 {
+    font-size: clamp(40px, 6vw, 76px);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+    margin: 0 0 16px;
+  }
+  .hero h1 .red { color: var(--red); }
+  .hero p { color: var(--muted); font-size: 17px; max-width: 600px; line-height: 1.5; margin: 0; }
+  .hero-stats { display: flex; gap: 36px; margin-top: 28px; }
+  .stat .v { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+  .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+
+  /* ---------- Filter chips ---------- */
+  .filters {
+    max-width: 1400px; margin: 0 auto;
+    padding: 28px 28px 12px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .chip {
+    padding: 9px 16px; border-radius: 99px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    color: var(--text); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.18s ease;
+  }
+  .chip:hover { border-color: #3a3a44; transform: translateY(-1px); }
+  .chip.active { background: var(--red); border-color: var(--red); }
+  .chip .count { color: var(--muted); margin-left: 6px; font-size: 11px; }
+  .chip.active .count { color: rgba(255,255,255,0.7); }
+
+  /* ---------- Grid ---------- */
+  .grid {
+    max-width: 1400px; margin: 0 auto;
+    padding: 16px 28px 80px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 18px;
+  }
+  .card {
+    position: relative;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.22s cubic-bezier(.2,.8,.2,1), border-color 0.18s, box-shadow 0.22s;
+  }
+  .card:hover { transform: translateY(-4px); border-color: #3a3a44; box-shadow: 0 18px 40px -20px rgba(218,41,28,0.35); }
+  .card.selected { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), 0 16px 36px -18px rgba(218,41,28,0.55); }
+  .card-photo {
+    aspect-ratio: 1 / 1.05;
+    background: linear-gradient(140deg, #1f1f25 0%, #0f0f13 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .card-photo::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 30%, rgba(218,41,28,0.18), transparent 60%);
+  }
+  .initials {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    font-size: 88px; font-weight: 900; color: rgba(255,255,255,0.06); letter-spacing: -0.05em;
+  }
+  .badge-tag {
+    position: absolute; top: 12px; left: 12px;
+    padding: 4px 10px; border-radius: 99px;
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(8px);
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .badge-tag.linked { color: var(--red); border: 1px solid rgba(218,41,28,0.4); }
+  .badge-tag.leaving { color: var(--gold); border: 1px solid rgba(251,191,36,0.4); }
+  .badge-tag.gem { color: #a78bfa; border: 1px solid rgba(167,139,250,0.4); }
+  .badge-tag.young { color: var(--green); border: 1px solid rgba(34,197,94,0.4); }
+
+  .price-tag {
+    position: absolute; top: 12px; right: 12px;
+    padding: 6px 12px; border-radius: 10px;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+    font-weight: 800; font-size: 14px; letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .pos-tag {
+    position: absolute; bottom: 12px; left: 12px;
+    padding: 4px 9px; border-radius: 8px;
+    background: rgba(255,255,255,0.1); backdrop-filter: blur(8px);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  }
+
+  .card-body { padding: 14px 16px 16px; }
+  .card-name { font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+  .card-club { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .card-add {
+    margin-top: 12px;
+    width: 100%;
+    padding: 9px;
+    border-radius: 10px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-weight: 600; font-size: 12px;
+    cursor: pointer; transition: all 0.18s ease;
+  }
+  .card.selected .card-add { background: var(--red); border-color: var(--red); }
+  .card-add:hover { border-color: #4a4a55; }
+
+  /* ---------- Section title ---------- */
+  .section-title {
+    max-width: 1400px; margin: 36px auto 0;
+    padding: 0 28px;
+    font-size: 11px; color: var(--muted); letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600;
+  }
+
+  /* ---------- Floating squad bar ---------- */
+  .squad-bar {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    z-index: 60;
+    background: rgba(20,20,24,0.92);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 12px 14px 12px 18px;
+    display: flex; align-items: center; gap: 16px;
+    box-shadow: 0 24px 60px -20px rgba(0,0,0,0.6);
+  }
+  .squad-bar .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .squad-bar .n { font-weight: 800; font-size: 18px; }
+  .squad-avatars { display: flex; }
+  .squad-avatars .av {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(140deg, #2a2a32, #16161a);
+    border: 2px solid var(--bg-2);
+    margin-left: -10px;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .squad-avatars .av:first-child { margin-left: 0; }
+  .confirm-btn {
+    background: var(--red); color: white; border: none;
+    padding: 10px 18px; border-radius: 12px;
+    font-weight: 700; font-size: 13px; letter-spacing: -0.01em;
+    cursor: pointer; transition: all 0.18s ease;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .confirm-btn:hover { background: #ff3a2c; transform: translateY(-1px); box-shadow: 0 8px 20px -6px rgba(218,41,28,0.6); }
+
+  /* ---------- Export preview ---------- */
+  .export-section {
+    max-width: 1400px; margin: 80px auto 0;
+    padding: 0 28px 80px;
+  }
+  .export-section h2 {
+    font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin: 0 0 8px;
+  }
+  .export-section .sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+  .export-card {
+    width: 100%; max-width: 900px;
+    aspect-ratio: 1200 / 1500;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(218,41,28,0.18), transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(218,41,28,0.10), transparent 50%),
+      linear-gradient(180deg, #0d0d10, #050507);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 44px 44px 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .export-card::before {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  .export-head { display: flex; justify-content: space-between; align-items: flex-start; position: relative; }
+  .export-title { font-size: 36px; font-weight: 900; letter-spacing: -0.04em; line-height: 1; }
+  .export-title .red { color: var(--red); }
+  .export-meta { text-align: right; font-size: 11px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+  .export-meta .big { color: var(--text); font-size: 28px; font-weight: 800; letter-spacing: -0.02em; display: block; margin-top: 4px; }
+  .export-meta .big .left { color: var(--muted); font-size: 14px; font-weight: 500; }
+
+  .export-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    margin-top: 36px; position: relative;
+  }
+  .mini-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 14px;
+    position: relative;
+  }
+  .mini-photo {
+    aspect-ratio: 1; border-radius: 10px;
+    background: linear-gradient(140deg, #1a1a22, #0d0d12);
+    margin-bottom: 10px; position: relative; overflow: hidden;
+    display: grid; place-items: center;
+    font-size: 32px; font-weight: 900; color: rgba(255,255,255,0.08);
+  }
+  .mini-name { font-weight: 700; font-size: 13px; letter-spacing: -0.01em; }
+  .mini-club { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .mini-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .mini-pos { font-size: 9px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; }
+  .mini-price { font-size: 13px; font-weight: 800; color: var(--red); font-variant-numeric: tabular-nums; }
+
+  .export-foot {
+    position: absolute; bottom: 28px; left: 44px; right: 44px;
+    display: flex; justify-content: space-between; align-items: end;
+    font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .export-foot .total { color: var(--text); font-size: 14px; font-weight: 700; }
+  .export-foot .total .num { color: var(--red); }
+
+  /* ---------- Detail modal preview ---------- */
+  .modal-demo {
+    max-width: 1400px; margin: 80px auto 0;
+    padding: 0 28px 60px;
+  }
+  .modal-card {
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 22px;
+    padding: 32px; display: grid; grid-template-columns: 280px 1fr; gap: 32px;
+  }
+  .modal-photo {
+    aspect-ratio: 1 / 1.15; border-radius: 14px;
+    background: linear-gradient(140deg, #1f1f25, #0f0f13);
+    position: relative; overflow: hidden;
+    display: grid; place-items: center;
+    font-size: 84px; font-weight: 900; color: rgba(255,255,255,0.08);
+  }
+  .modal-photo .price-tag { font-size: 18px; padding: 8px 14px; }
+  .modal-head .pname { font-size: 32px; font-weight: 900; letter-spacing: -0.03em; }
+  .modal-head .pclub { color: var(--muted); margin-top: 4px; }
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 24px; }
+  .stat-cell { background: var(--bg-3); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .stat-cell .sv { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  .stat-cell .sl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+  .reason { margin-top: 24px; padding: 18px; background: rgba(218,41,28,0.06); border-left: 3px solid var(--red); border-radius: 8px; }
+  .reason h4 { margin: 0 0 6px; font-size: 11px; color: var(--red); letter-spacing: 0.12em; text-transform: uppercase; }
+  .reason p { margin: 0; line-height: 1.55; color: #d4d4d8; font-size: 14px; }
+
+  /* fade-in */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .card, .stat-cell, .mini-card { animation: fadeUp 0.5s cubic-bezier(.2,.8,.2,1) both; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark">M</div>
+      <div>
+        <div class="brand-title">Draumakaup United</div>
+        <div class="brand-sub">Sumar · 2026</div>
+      </div>
+    </div>
+    <div class="budget">
+      <div>
+        <div class="budget-num"><span class="big">£95.0m</span> <span class="small">/ £250.0m eftir</span></div>
+        <div class="budget-bar-wrap" style="margin-top:6px"><div class="budget-bar"></div></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <h1>Þú ert stjóri.<br/><span class="red">£250 milljónir.</span> Notaðu þær vel.</h1>
+  <p>Veldu úr leikmönnum sem hafa verið orðaðir við United, leikmönnum á förum, fjársjóðum og ungstirnum. Bættu við sjálf/ur ef þig vantar einhvern. Staðfestu hópinn og fáðu mynd.</p>
+  <div class="hero-stats">
+    <div class="stat"><div class="v">68</div><div class="l">Leikmenn í boði</div></div>
+    <div class="stat"><div class="v">3</div><div class="l">Valdir</div></div>
+    <div class="stat"><div class="v" style="color:var(--green)">£155.0m</div><div class="l">Eftir í budget</div></div>
+  </div>
+</section>
+
+<div class="filters">
+  <button class="chip active">Allir <span class="count">68</span></button>
+  <button class="chip">Orðaðir við United <span class="count">24</span></button>
+  <button class="chip">Á förum í sumar <span class="count">18</span></button>
+  <button class="chip">Hidden gems <span class="count">14</span></button>
+  <button class="chip">Ungstirni <span class="count">12</span></button>
+  <button class="chip" style="margin-left:auto; border-style:dashed">+ Bæta við leikmanni</button>
+</div>
+
+<div class="section-title">Vinsælast í dag · sýnishorn</div>
+
+<div class="grid">
+
+  <div class="card selected" style="animation-delay:.02s">
+    <div class="card-photo">
+      <div class="initials">VO</div>
+      <span class="badge-tag linked">Orðaður</span>
+      <span class="price-tag">£85m</span>
+      <span class="pos-tag">ST</span>
+    </div>
+    <div class="card-body">
+      <div class="card-name">Victor Osimhen</div>
+      <div class="card-club">Napoli · 27 ára</div>
+      <button class="card-add">Í hópnum ✓</button>
+    </div>
+  </div>
+
+  <div class="card" style="animation-delay:.06s">
+    <div class="card-photo">
+      <div class="initials">JN</div>
+      <span class="badge-tag linked">Orðaður</span>
+      <span class="price-tag">£70m</span>
+      <span class="pos-tag">CM</span>
+    </div>
+    <div class="card-body">
+      <div class="card-name">João Neves</div>
+      <div class="card-club">PSG · 21 árs</div>
+      <button class="card-add">+ Bæta í hóp</button>
+    </div>
+  </div>
+
+  <div class="card selected" style="animation-delay:.10s">
+    <div class="card-photo">
+      <div class="initials">JB</div>
+      <span class="badge-tag linked">Orðaður</span>
+      <span class="price-tag">£60m</span>
+      <span class="pos-tag">CB</span>
+    </div>
+    <div class="card-body">
+      <div class="card-name">Jarrad Branthwaite</div>
+      <div class="card-club">Everton · 23 ára</div>
+      <button class="card-add">Í hópnum ✓</button>
+    </div>
+  </div>
+
+  <div class="card" style="animation-delay:.14s">
+    <div class="card-photo">
+      <div class="initials">NW</div>
+      <span class="badge-tag leaving">Á förum</span>
+      <span class="price-tag">£55m</span>
+      <span class="pos-tag">LW</span>
+    </div>
+    <div class="card-body">
+      <div class="card-name">Nico Williams</div>
+      <div class="card-club">Athletic Club · 23 ára</div>
+      <button class="card-add">+ Bæta í hóp</button>
+    </div>
+  </div>
+
+  <div class="card selected" style="animation-delay:.18s">
+    <div class="card-photo">
+      <div class="initials">EE</div>
+      <span class="badge-tag leaving">Á förum</span>
+      <span class="price-tag">£45m</span>
+      <span class="pos-tag">AM</span>
+    </div>
+    <div class="card-body">
+      <div class="card-name">Eberechi Eze</div>
+      <div class="card-club">Crystal Palace · 27 ára</div>
+      <button class="card-add">Í hópnum ✓</button>
+    </div>
+  </div>
+
+  <div class="card" style="animation-delay:.22s">
+    <div class="card-photo">
+      <div class="initials">AS</div>
+      <span class="badge-tag gem">Hidden gem</span>
+      <span class="price-tag">£38m</span>
+      <span class="pos-tag">RW</span>
+    </div>
+    <div class="card-body">
+      <div class="card-name">Antoine Semenyo</div>
+      <div class="card-club">Bournemouth · 26 ára</div>
+      <button class="card-add">+ Bæta í hóp</button>
+    </div>
+  </div>
+
+  <div class="card" style="animation-delay:.26s">
+    <div class="card-photo">
+      <div class="initials">FW</div>
+      <span class="badge-tag young">Ungstirni</span>
+      <span class="price-tag">£42m</span>
+      <span class="pos-tag">CM</span>
+    </div>
+    <div class="card-body">
+      <div class="card-name">Florian Wirtz</div>
+      <div class="card-club">Bayer Leverkusen · 22 ára</div>
+      <button class="card-add">+ Bæta í hóp</button>
+    </div>
+  </div>
+
+  <div class="card" style="animation-delay:.30s">
+    <div class="card-photo">
+      <div class="initials">GI</div>
+      <span class="badge-tag gem">Hidden gem</span>
+      <span class="price-tag">£40m</span>
+      <span class="pos-tag">CB</span>
+    </div>
+    <div class="card-body">
+      <div class="card-name">Gonçalo Inácio</div>
+      <div class="card-club">Sporting CP · 24 ára</div>
+      <button class="card-add">+ Bæta í hóp</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============== DETAIL MODAL PREVIEW ============== -->
+<section class="modal-demo">
+  <div class="section-title" style="padding:0; margin: 0 0 18px">Detail view — þegar smellt er á kort</div>
+  <div class="modal-card">
+    <div class="modal-photo">
+      VO
+      <span class="badge-tag linked" style="top:14px; left:14px;">Orðaður við United</span>
+      <span class="price-tag" style="top:14px; right:14px;">£85m</span>
+    </div>
+    <div>
+      <div class="modal-head">
+        <div class="pname">Victor Osimhen</div>
+        <div class="pclub">Napoli · ST · 27 ára · 1.86m</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-cell"><div class="sv">26</div><div class="sl">Mörk 25/26</div></div>
+        <div class="stat-cell"><div class="sv">0.71</div><div class="sl">xG / 90</div></div>
+        <div class="stat-cell"><div class="sv">4.8</div><div class="sl">Sókn í teig / 90</div></div>
+        <div class="stat-cell"><div class="sv">68%</div><div class="sl">Sigurhlutfall í lofti</div></div>
+      </div>
+      <div class="stats-row" style="margin-top:12px">
+        <div class="stat-cell"><div class="sv">3.2</div><div class="sl">Skot / 90</div></div>
+        <div class="stat-cell"><div class="sv">2.1</div><div class="sl">Pressing / 90</div></div>
+        <div class="stat-cell"><div class="sv">11</div><div class="sl">Stoðs.</div></div>
+        <div class="stat-cell"><div class="sv">91</div><div class="sl">Sprett-hraði (top 5%)</div></div>
+      </div>
+      <div class="reason">
+        <h4>Af hverju hentar hann United</h4>
+        <p>Klassískur miðherji sem United hefur saknað síðan á dögum van Persie — alvöru í teignum, sterkur í loftbaráttu og með sprett til að nýta sókn frá Bruno Fernandes. Premier League leikstíllinn (þrýstingur, transition) hentar samhæfingu hans frá Napoli-tímabili Spalletti. Stór peningur en raunhæft markaverk.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== EXPORT IMAGE PREVIEW ============== -->
+<section class="export-section">
+  <div class="section-title" style="padding:0; margin: 0 0 8px">Exported mynd — það sem þú deilir með vinunum</div>
+  <h2>Lokahópurinn þinn</h2>
+  <p class="sub">Smellt á "Staðfesta hóp" → PNG sem þú getur sent á vinina eða hent á Twitter.</p>
+
+  <div class="export-card">
+    <div class="export-head">
+      <div>
+        <div class="export-title">DRAUMA<span class="red">KAUP</span></div>
+        <div style="color:var(--muted); font-size:12px; letter-spacing:0.12em; margin-top:6px; text-transform:uppercase;">Manchester United · Sumar 2026</div>
+      </div>
+      <div class="export-meta">
+        Eytt af £250m
+        <span class="big">£245<span class="left">m</span></span>
+      </div>
+    </div>
+
+    <div class="export-grid">
+      <div class="mini-card">
+        <div class="mini-photo">VO</div>
+        <div class="mini-name">Victor Osimhen</div>
+        <div class="mini-club">Napoli</div>
+        <div class="mini-foot"><span class="mini-pos">ST</span><span class="mini-price">£85m</span></div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-photo">JN</div>
+        <div class="mini-name">João Neves</div>
+        <div class="mini-club">PSG</div>
+        <div class="mini-foot"><span class="mini-pos">CM</span><span class="mini-price">£70m</span></div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-photo">JB</div>
+        <div class="mini-name">J. Branthwaite</div>
+        <div class="mini-club">Everton</div>
+        <div class="mini-foot"><span class="mini-pos">CB</span><span class="mini-price">£60m</span></div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-photo">EE</div>
+        <div class="mini-name">Eberechi Eze</div>
+        <div class="mini-club">Crystal Palace</div>
+        <div class="mini-foot"><span class="mini-pos">AM</span><span class="mini-price">£45m</span></div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-photo">AS</div>
+        <div class="mini-name">A. Semenyo</div>
+        <div class="mini-club">Bournemouth</div>
+        <div class="mini-foot"><span class="mini-pos">RW</span><span class="mini-price">£38m</span></div>
+      </div>
+      <div class="mini-card" style="opacity:0.4; border-style:dashed">
+        <div class="mini-photo" style="font-size:38px;">+</div>
+        <div class="mini-name" style="color:var(--muted)">Pláss eftir</div>
+        <div class="mini-club">£5m í budget</div>
+        <div class="mini-foot"><span class="mini-pos">—</span><span class="mini-price" style="color:var(--muted)">—</span></div>
+      </div>
+    </div>
+
+    <div class="export-foot">
+      <div>draumakaup.is</div>
+      <div class="total">Heildarverð <span class="num">£245m</span> · 5 leikmenn</div>
+      <div>@þú</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== FLOATING SQUAD BAR ============== -->
+<div class="squad-bar">
+  <div>
+    <div class="lbl">Hópurinn þinn</div>
+    <div class="n">3 leikmenn</div>
+  </div>
+  <div class="squad-avatars">
+    <div class="av" style="background:linear-gradient(140deg,#3a0a06,#1a0503)">VO</div>
+    <div class="av" style="background:linear-gradient(140deg,#3a0a06,#1a0503)">JB</div>
+    <div class="av" style="background:linear-gradient(140deg,#3a0a06,#1a0503)">EE</div>
+  </div>
+  <button class="confirm-btn">Staðfesta hóp →</button>
+</div>
+
+</body>
+</html>
