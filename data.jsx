@@ -303,6 +303,14 @@ const sum = (ids, allPlayers) => ids.reduce((a,id) => a + ((allPlayers||PLAYERS)
 // ---- Custom players: persisted in localStorage so they survive reload ----
 const CUSTOM_KEY = 'dk:custom:v1';
 const SIGNED_KEY = 'dk:signed:v2';
+const NAME_KEY = 'dk:name:v1';
+
+function loadName() {
+  try { return localStorage.getItem(NAME_KEY) || ''; } catch { return ''; }
+}
+function saveName(name) {
+  try { localStorage.setItem(NAME_KEY, name || ''); } catch {}
+}
 
 function loadCustomPlayers() {
   try {
@@ -371,4 +379,5 @@ window.DK = {
   PLAYERS, UNITED_SQUAD, TAG_META, BUDGET_TOTAL, SELECTED_IDS,
   fmt, sum, loadCustomPlayers, saveCustomPlayers,
   loadSigned, saveSigned, makeCustomPlayer,
+  loadName, saveName,
 };

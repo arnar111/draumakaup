@@ -5,7 +5,8 @@
 (function () {
 const { PLAYERS, UNITED_SQUAD, TAG_META, BUDGET_TOTAL, fmt, sum,
         loadCustomPlayers, saveCustomPlayers,
-        loadSigned, saveSigned, makeCustomPlayer } = window.DK;
+        loadSigned, saveSigned, makeCustomPlayer,
+        loadName, saveName } = window.DK;
 const { cream, cream2, ink, red, gold, navy } = window.V3T;
 const { FutCard, MiniChip, Pitch } = window;
 const { useState, useEffect, useMemo, useRef } = React;
@@ -113,7 +114,7 @@ function autoLineup(formation, signedIds, allPlayers) {
 // =====================================================================
 // TOP BAR
 // =====================================================================
-function TopBar({ signedIds, players, tab, setTab }) {
+function TopBar({ signedIds, players, tab, setTab, managerName, onEditName }) {
   const spent = sum(signedIds, players);
   const remaining = BUDGET_TOTAL - spent;
   const pct = (spent/BUDGET_TOTAL) * 100;
@@ -134,7 +135,16 @@ function TopBar({ signedIds, players, tab, setTab }) {
         </div>
         <div>
           <div style={{ fontFamily:'"Bebas Neue", Impact, sans-serif', fontSize:34, lineHeight:0.9, letterSpacing:'0.02em', color:ink }}>DRAUMAKAUP</div>
-          <div style={{ fontSize:11, letterSpacing:'0.22em', color:'rgba(31,24,19,0.6)', fontWeight:700 }}>★ STJÓRINN @ÞÚ · MUFC · {signedIds.length} SIGNINGS ★</div>
+          <div style={{ fontSize:11, letterSpacing:'0.22em', color:'rgba(31,24,19,0.6)', fontWeight:700 }}>
+            ★ STJÓRINN{' '}
+            <span
+              onClick={onEditName}
+              title="Smella til að breyta nafni"
+              style={{ color:ink, cursor:'pointer', borderBottom:`1.5px dashed rgba(31,24,19,0.5)`, padding:'0 2px' }}>
+              @{(managerName || 'ÞÚ').toUpperCase()}
+            </span>
+            {' '}· MUFC · {signedIds.length} SIGNINGS ★
+          </div>
         </div>
       </div>
 
@@ -283,6 +293,66 @@ function MarketScreen({ players, signedIds, onToggle, onOpenStats, onAddClick, o
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// NAME MODAL — asks for manager name; shown on first load and editable
+// =====================================================================
+function NameModal({ initial, onClose, onSave, canDismiss }) {
+  const [val, setVal] = useState(initial || '');
+  const trimmed = val.trim();
+  function submit(e) {
+    e?.preventDefault?.();
+    if (!trimmed) return;
+    onSave(trimmed);
+  }
+  return (
+    <div onClick={canDismiss ? onClose : undefined} style={{
+      position:'fixed', inset:0, zIndex:130,
+      background:'rgba(31,24,19,0.82)', backdropFilter:'blur(8px)',
+      display:'grid', placeItems:'center', padding:'40px',
+    }}>
+      <form onSubmit={submit} onClick={e=>e.stopPropagation()} style={{
+        width:'min(480px, 96vw)', background:cream, color:ink, position:'relative',
+        fontFamily:'"Oswald", Impact, sans-serif', padding:'28px 32px',
+        border:`5px solid ${ink}`, boxShadow:`10px 10px 0 ${red}`,
+      }}>
+        {canDismiss && (
+          <button type="button" onClick={onClose} style={{
+            position:'absolute', top:12, right:12, background:ink, color:cream, border:'none',
+            width:34, height:34, borderRadius:6, fontFamily:'"Bebas Neue", Impact, sans-serif', fontSize:20, cursor:'pointer',
+          }}>×</button>
+        )}
+
+        <div style={{ fontSize:11, letterSpacing:'0.3em', color:'rgba(31,24,19,0.6)', fontWeight:700 }}>★ STJÓRA-RÁÐNING ★</div>
+        <div style={{ fontFamily:'"Bebas Neue", Impact, sans-serif', fontSize:54, lineHeight:0.9, marginTop:4 }}>HVAÐ HEITIRÐU?</div>
+        <div style={{ fontSize:13, color:'rgba(31,24,19,0.7)', marginTop:8, lineHeight:1.4 }}>
+          Nafnið þitt birtist á deilanlegri PNG-myndinni þegar þú staðfestir hópinn. Bíddu með "Sir" þangað til þú vinnur Champions League.
+        </div>
+
+        <input
+          autoFocus
+          value={val}
+          onChange={e=>setVal(e.target.value)}
+          placeholder="t.d. Arnar"
+          maxLength={24}
+          style={{
+            marginTop:18, width:'100%', padding:'14px 16px', border:`2px solid ${ink}`, borderRadius:10,
+            background:'#fff7da', fontFamily:'"Bebas Neue", Impact, sans-serif', fontSize:28, letterSpacing:'0.04em',
+            outline:'none', boxShadow:`3px 3px 0 ${ink}`, color:ink, boxSizing:'border-box',
+          }}
+        />
+
+        <button type="submit" disabled={!trimmed}
+          style={{
+            marginTop:18, width:'100%', background: trimmed ? ink : 'rgba(31,24,19,0.35)',
+            color: cream, border:`2px solid ${ink}`, padding:'14px', borderRadius:10,
+            fontFamily:'"Bebas Neue", Impact, sans-serif', fontSize:22, letterSpacing:'0.12em',
+            cursor: trimmed ? 'pointer' : 'not-allowed', boxShadow:`4px 4px 0 ${red}`,
+          }}>★ TAKA VIÐ MUFC ★</button>
+      </form>
     </div>
   );
 }
@@ -677,7 +747,7 @@ function ChipPick({ p, isNew, disabled, onClick, size=68 }) {
 // =====================================================================
 // EXPORT SCREEN — matchday programme poster, with download trigger
 // =====================================================================
-function ExportScreen({ players, signedIds, lineup, formation }) {
+function ExportScreen({ players, signedIds, lineup, formation, managerName }) {
   const [status, setStatus] = useState('idle'); // idle | working | done | error
   const wrapRef = useRef(null);
   const posterRef = useRef(null);
@@ -694,7 +764,8 @@ function ExportScreen({ players, signedIds, lineup, formation }) {
       });
       const a = document.createElement('a');
       a.href = dataUrl;
-      a.download = `draumakaup-${new Date().toISOString().slice(0,10)}.png`;
+      const slug = (managerName || 'stjori').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'stjori';
+      a.download = `draumakaup-${slug}-${new Date().toISOString().slice(0,10)}.png`;
       document.body.appendChild(a); a.click(); a.remove();
       setStatus('done');
       setTimeout(() => setStatus('idle'), 2400);
@@ -729,7 +800,7 @@ function ExportScreen({ players, signedIds, lineup, formation }) {
       <div ref={wrapRef} style={{ width:'100%', maxWidth:1080, height: 1350*scale + 8, overflow:'hidden', display:'flex', justifyContent:'center' }}>
         <div style={{ transform:`scale(${scale})`, transformOrigin:'top center' }}>
           <div ref={posterRef}>
-            <PosterCard players={players} signedIds={signedIds} lineup={lineup} formation={formation} />
+            <PosterCard players={players} signedIds={signedIds} lineup={lineup} formation={formation} managerName={managerName} />
           </div>
         </div>
       </div>
@@ -737,8 +808,9 @@ function ExportScreen({ players, signedIds, lineup, formation }) {
   );
 }
 
-function PosterCard({ players, signedIds, lineup, formation }) {
+function PosterCard({ players, signedIds, lineup, formation, managerName }) {
   const slots = FORMATIONS[formation];
+  const tag = (managerName || 'ÞÚ').toUpperCase();
   return (
     <div style={{
       width:1080, height:1350, background:'#0e1a14', color:cream, position:'relative', overflow:'hidden',
@@ -756,7 +828,7 @@ function PosterCard({ players, signedIds, lineup, formation }) {
             DRAUMAKAUP
           </div>
           <div style={{ marginTop:4, fontSize:18, letterSpacing:'0.3em', color:cream, fontWeight:700 }}>
-            SUMAR <span style={{ color:red }}>·</span> 2026 <span style={{ color:red }}>·</span> @ÞÚ
+            SUMAR <span style={{ color:red }}>·</span> 2026 <span style={{ color:red }}>·</span> STJÓRI @{tag}
           </div>
         </div>
 
@@ -816,6 +888,8 @@ function App() {
   const [statsId, setStatsId] = useState(null);
   const [pickingSlot, setPickingSlot] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [managerName, setManagerName] = useState(() => loadName());
+  const [showName, setShowName] = useState(() => !loadName());
   const [lineup, setLineup] = useState(() =>
     autoLineup('4-2-3-1', loadSigned(window.DK.SELECTED_IDS), [...PLAYERS, ...loadCustomPlayers()])
   );
@@ -824,6 +898,8 @@ function App() {
   useEffect(() => { saveSigned(signedIds); }, [signedIds]);
   // persist custom players
   useEffect(() => { saveCustomPlayers(customPlayers); }, [customPlayers]);
+  // persist manager name
+  useEffect(() => { saveName(managerName); }, [managerName]);
 
   // re-auto when formation changes
   useEffect(() => {
@@ -877,7 +953,14 @@ function App() {
       `}</style>
 
       <div style={{ position:'relative', zIndex:2 }}>
-        <TopBar signedIds={signedIds} players={players} tab={tab} setTab={setTab} />
+        <TopBar
+          signedIds={signedIds}
+          players={players}
+          tab={tab}
+          setTab={setTab}
+          managerName={managerName}
+          onEditName={() => setShowName(true)}
+        />
 
         {tab === 'market' && (
           <MarketScreen
@@ -904,7 +987,7 @@ function App() {
         )}
 
         {tab === 'export' && (
-          <ExportScreen players={players} signedIds={signedIds} lineup={lineup} formation={formation} />
+          <ExportScreen players={players} signedIds={signedIds} lineup={lineup} formation={formation} managerName={managerName} />
         )}
 
         <StatsModal
@@ -913,6 +996,15 @@ function App() {
           onToggle={toggleSign}
           signed={statsId ? signedIds.includes(statsId) : false}
         />
+
+        {showName && (
+          <NameModal
+            initial={managerName}
+            canDismiss={!!managerName}
+            onClose={() => setShowName(false)}
+            onSave={(n) => { setManagerName(n); setShowName(false); }}
+          />
+        )}
 
         {showAdd && <AddPlayerModal onClose={() => setShowAdd(false)} onAdd={addCustom} />}
       </div>
