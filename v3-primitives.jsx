@@ -10,6 +10,69 @@ const red = '#c52a1c';
 const gold = '#d4a017';
 const navy = '#1b2a4e';
 
+// ---- Wikipedia thumbnail loader with localStorage cache ----
+const PHOTO_CACHE_PREFIX = 'dk:photo:v1:';
+const _inflight = new Map();
+
+function fetchWikiThumb(title) {
+  if (!title) return Promise.resolve('');
+  if (_inflight.has(title)) return _inflight.get(title);
+  const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+  const p = fetch(url, { headers: { 'Accept': 'application/json' } })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      const u = (d && d.thumbnail && d.thumbnail.source) || '';
+      try { localStorage.setItem(PHOTO_CACHE_PREFIX + title, u); } catch {}
+      return u;
+    })
+    .catch(() => {
+      try { localStorage.setItem(PHOTO_CACHE_PREFIX + title, ''); } catch {}
+      return '';
+    })
+    .finally(() => { _inflight.delete(title); });
+  _inflight.set(title, p);
+  return p;
+}
+
+function usePlayerPhoto(wiki) {
+  const cached = React.useMemo(() => {
+    if (!wiki) return '';
+    try { return localStorage.getItem(PHOTO_CACHE_PREFIX + wiki); } catch { return null; }
+  }, [wiki]);
+  const [url, setUrl] = React.useState(cached);
+  React.useEffect(() => {
+    if (!wiki) { setUrl(''); return; }
+    if (cached !== null && cached !== undefined) return;
+    let alive = true;
+    fetchWikiThumb(wiki).then(u => { if (alive) setUrl(u); });
+    return () => { alive = false; };
+  }, [wiki, cached]);
+  return url;
+}
+
+function PlayerPhoto({ p, fallbackSize }) {
+  const url = usePlayerPhoto(p.wiki);
+  if (url) {
+    return (
+      <img
+        src={url}
+        crossOrigin="anonymous"
+        alt={p.name}
+        draggable={false}
+        style={{
+          width: '94%', height: '94%', objectFit: 'cover', objectPosition: 'center 18%',
+          borderRadius: 6, filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.35))',
+          background: 'rgba(0,0,0,0.12)',
+        }}
+        onError={e => { e.currentTarget.style.display = 'none'; }}
+      />
+    );
+  }
+  return (
+    <div style={{ fontSize: fallbackSize, fontWeight:900, opacity:0.85, letterSpacing:'-0.04em', textShadow:'0 4px 16px rgba(0,0,0,0.3)' }}>{p.initials}</div>
+  );
+}
+
 const RARITY = {
   linked:  { name:'TARGET',    grad:'linear-gradient(135deg, #c52a1c 0%, #f96e2a 45%, #ffd97a 100%)', text:'#1f1813', border:'#d4a017' },
   leaving: { name:'AVAILABLE', grad:'linear-gradient(135deg, #d4a017 0%, #ffe24a 100%)',              text:'#1f1813', border:'#a87d10' },
@@ -52,8 +115,8 @@ function FutCard({ p, w=200, big=false, isUnited=false }) {
         background:`radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 60%)`,
         display:'grid', placeItems:'center', position:'relative',
       }}>
-        <div style={{ fontSize: 96*fontSize, fontWeight:900, opacity:0.85, letterSpacing:'-0.04em', textShadow:'0 4px 16px rgba(0,0,0,0.3)' }}>{p.initials}</div>
-        <div style={{ position:'absolute', bottom:0, right:0, fontSize:9*fontSize, fontWeight:700, letterSpacing:'0.15em', background:'rgba(0,0,0,0.4)', padding:'2px 6px', borderRadius:4, color:'#fff' }}>{p.nat}</div>
+        <PlayerPhoto p={p} fallbackSize={96*fontSize} />
+        <div style={{ position:'absolute', bottom:0, right:0, fontSize:9*fontSize, fontWeight:700, letterSpacing:'0.15em', background:'rgba(0,0,0,0.55)', padding:'2px 6px', borderRadius:4, color:'#fff', zIndex:2 }}>{p.nat}</div>
       </div>
 
       <div style={{

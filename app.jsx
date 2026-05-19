@@ -3,7 +3,9 @@
 // Trading-card aesthetic. Old Trafford pitch ratio 105:68 throughout.
 
 (function () {
-const { PLAYERS, UNITED_SQUAD, TAG_META, BUDGET_TOTAL, fmt, sum } = window.DK;
+const { PLAYERS, UNITED_SQUAD, TAG_META, BUDGET_TOTAL, fmt, sum,
+        loadCustomPlayers, saveCustomPlayers,
+        loadSigned, saveSigned, makeCustomPlayer } = window.DK;
 const { cream, cream2, ink, red, gold, navy } = window.V3T;
 const { FutCard, MiniChip, Pitch } = window;
 const { useState, useEffect, useMemo, useRef } = React;
@@ -111,8 +113,8 @@ function autoLineup(formation, signedIds, allPlayers) {
 // =====================================================================
 // TOP BAR
 // =====================================================================
-function TopBar({ signedIds, tab, setTab }) {
-  const spent = sum(signedIds);
+function TopBar({ signedIds, players, tab, setTab }) {
+  const spent = sum(signedIds, players);
   const remaining = BUDGET_TOTAL - spent;
   const pct = (spent/BUDGET_TOTAL) * 100;
   return (
@@ -176,30 +178,30 @@ function TopBar({ signedIds, tab, setTab }) {
 // =====================================================================
 // MARKET SCREEN
 // =====================================================================
-function MarketScreen({ signedIds, onToggle, onOpenStats }) {
+function MarketScreen({ players, signedIds, onToggle, onOpenStats, onAddClick, onDeleteCustom }) {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
-    let list = PLAYERS;
+    let list = players;
     if (filter !== 'all') list = list.filter(p => p.tag === filter);
     if (search) {
       const s = search.toLowerCase();
       list = list.filter(p => p.name.toLowerCase().includes(s) || p.club.toLowerCase().includes(s));
     }
     return list;
-  }, [filter, search]);
+  }, [filter, search, players]);
 
   return (
     <div style={{ padding:'16px 28px 90px', position:'relative' }}>
       {/* Filter row */}
       <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
         {[
-          { id:'all', l:'ALL', n:PLAYERS.length, c:ink },
-          { id:'linked', l:'TARGETS', n:PLAYERS.filter(p=>p.tag==='linked').length, c:red },
-          { id:'leaving', l:'AVAILABLE', n:PLAYERS.filter(p=>p.tag==='leaving').length, c:gold },
-          { id:'gem', l:'HIDDEN', n:PLAYERS.filter(p=>p.tag==='gem').length, c:'#5e3aa8' },
-          { id:'young', l:'WONDERKIDS', n:PLAYERS.filter(p=>p.tag==='young').length, c:'#22c55e' },
+          { id:'all', l:'ALL', n:players.length, c:ink },
+          { id:'linked', l:'TARGETS', n:players.filter(p=>p.tag==='linked').length, c:red },
+          { id:'leaving', l:'AVAILABLE', n:players.filter(p=>p.tag==='leaving').length, c:gold },
+          { id:'gem', l:'HIDDEN', n:players.filter(p=>p.tag==='gem').length, c:'#5e3aa8' },
+          { id:'young', l:'WONDERKIDS', n:players.filter(p=>p.tag==='young').length, c:'#22c55e' },
         ].map((f,i)=>(
           <button key={f.id}
             onClick={()=>setFilter(f.id)}
@@ -213,6 +215,17 @@ function MarketScreen({ signedIds, onToggle, onOpenStats }) {
               boxShadow: filter===f.id ? `3px 3px 0 ${ink}` : `2px 2px 0 ${ink}`,
             }}>{f.l} <span style={{ fontSize:11, opacity:0.75 }}>{f.n}</span></button>
         ))}
+
+        <button
+          onClick={onAddClick}
+          style={{
+            padding:'7px 14px', borderRadius:8,
+            background:'#fff7da', color:ink,
+            border:`2px dashed ${ink}`, fontFamily:'"Bebas Neue", Impact, sans-serif',
+            fontSize:14, letterSpacing:'0.08em', cursor:'pointer',
+            transform: 'rotate(0.6deg)', boxShadow:`2px 2px 0 ${ink}`,
+          }}>+ BÆTA VIÐ</button>
+
         <input
           value={search} onChange={e => setSearch(e.target.value)}
           placeholder="leita..."
@@ -257,10 +270,118 @@ function MarketScreen({ signedIds, onToggle, onOpenStats }) {
                   IN<br/>HÓP
                 </div>
               )}
+              {p.custom && !isSel && (
+                <button
+                  onClick={(e)=>{ e.stopPropagation(); if (confirm(`Eyða ${p.name} úr listanum?`)) onDeleteCustom(p.id); }}
+                  title="Eyða custom leikmanni"
+                  style={{ position:'absolute', top:-10, left:-10, background:ink, color:cream, border:`2px solid ${cream}`, width:26, height:26, borderRadius:'50%', cursor:'pointer', fontSize:14, lineHeight:1, transform:`rotate(${-rot}deg)`, boxShadow:`2px 2px 0 ${red}`, zIndex:3 }}>×</button>
+              )}
+              {p.custom && (
+                <div style={{ position:'absolute', top:8, left:8, background:'#fff7da', color:ink, fontSize:8, fontWeight:900, letterSpacing:'0.15em', padding:'2px 5px', border:`1.5px solid ${ink}`, transform:`rotate(${-rot-4}deg)`, zIndex:2, fontFamily:'"Bebas Neue", Impact, sans-serif' }}>CUSTOM</div>
+              )}
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// ADD-PLAYER MODAL
+// =====================================================================
+function AddPlayerModal({ onClose, onAdd }) {
+  const [form, setForm] = useState({ name:'', club:'', pos:'CM', price:'30', tag:'linked', nat:'' });
+  const update = (k,v) => setForm(f => ({ ...f, [k]:v }));
+  const canSubmit = form.name.trim().length > 1 && form.club.trim().length > 0 && parseInt(form.price,10) >= 0;
+
+  function submit(e) {
+    e?.preventDefault?.();
+    if (!canSubmit) return;
+    onAdd(form);
+  }
+
+  const labelStyle = { fontSize:10, letterSpacing:'0.2em', fontWeight:700, color:'rgba(31,24,19,0.7)', marginBottom:4, display:'block' };
+  const inputStyle = {
+    width:'100%', padding:'9px 12px', border:`2px solid ${ink}`, borderRadius:8,
+    background:'#fff7da', fontFamily:'"Oswald", Impact, sans-serif', fontSize:15,
+    outline:'none', boxShadow:`2px 2px 0 ${ink}`, color:ink, boxSizing:'border-box',
+  };
+
+  return (
+    <div onClick={onClose} style={{
+      position:'fixed', inset:0, zIndex:120,
+      background:'rgba(31,24,19,0.78)', backdropFilter:'blur(8px)',
+      display:'grid', placeItems:'center', padding:'40px',
+    }}>
+      <form onSubmit={submit} onClick={e=>e.stopPropagation()} style={{
+        width:'min(560px, 96vw)', background:cream, color:ink, position:'relative',
+        fontFamily:'"Oswald", Impact, sans-serif', padding:'28px 32px',
+        border:`5px solid ${ink}`, boxShadow:`10px 10px 0 ${red}`,
+      }}>
+        <button type="button" onClick={onClose} style={{
+          position:'absolute', top:12, right:12, background:ink, color:cream, border:'none',
+          width:34, height:34, borderRadius:6, fontFamily:'"Bebas Neue", Impact, sans-serif', fontSize:20, cursor:'pointer',
+        }}>×</button>
+
+        <div style={{ fontSize:11, letterSpacing:'0.3em', color:'rgba(31,24,19,0.6)', fontWeight:700 }}>★ TRANSFER REQUEST ★</div>
+        <div style={{ fontFamily:'"Bebas Neue", Impact, sans-serif', fontSize:46, lineHeight:0.9, marginTop:4 }}>BÆTA VIÐ LEIKMANNI</div>
+        <div style={{ fontSize:12, color:'rgba(31,24,19,0.65)', marginTop:6, fontStyle:'italic' }}>Mynd er sótt sjálfkrafa frá Wikipedia ef nafnið finnst. Annars færðu initials.</div>
+
+        <div style={{ marginTop:18, display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+          <div style={{ gridColumn:'1 / -1' }}>
+            <label style={labelStyle}>NAFN</label>
+            <input style={inputStyle} value={form.name} onChange={e=>update('name', e.target.value)} placeholder="t.d. Bryan Mbeumo" autoFocus />
+          </div>
+          <div>
+            <label style={labelStyle}>LIÐ</label>
+            <input style={inputStyle} value={form.club} onChange={e=>update('club', e.target.value)} placeholder="t.d. Brentford" />
+          </div>
+          <div>
+            <label style={labelStyle}>ÞJÓÐ (3 stafir)</label>
+            <input style={inputStyle} value={form.nat} onChange={e=>update('nat', e.target.value)} placeholder="t.d. CMR" maxLength={3} />
+          </div>
+          <div>
+            <label style={labelStyle}>STAÐA</label>
+            <select style={inputStyle} value={form.pos} onChange={e=>update('pos', e.target.value)}>
+              {['GK','RB','CB','LB','CDM','CM','AM','RM','LM','RW','LW','ST'].map(p => <option key={p}>{p}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>VERÐ (£M)</label>
+            <input style={inputStyle} type="number" min="0" step="1" value={form.price} onChange={e=>update('price', e.target.value)} />
+          </div>
+          <div style={{ gridColumn:'1 / -1' }}>
+            <label style={labelStyle}>FLOKKUR</label>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {[
+                { id:'linked',  l:'ORÐAÐUR',     c:red },
+                { id:'leaving', l:'Á FÖRUM',     c:gold },
+                { id:'gem',     l:'FALIN PERLA', c:'#5e3aa8' },
+                { id:'young',   l:'UNGSTIRNI',   c:'#22c55e' },
+              ].map(t => (
+                <button key={t.id} type="button" onClick={()=>update('tag', t.id)}
+                  style={{
+                    padding:'8px 14px', borderRadius:8,
+                    background: form.tag===t.id ? t.c : cream2,
+                    color: form.tag===t.id ? '#fff7da' : ink,
+                    border:`2px solid ${ink}`, fontFamily:'"Bebas Neue", Impact, sans-serif', fontSize:14,
+                    letterSpacing:'0.08em', cursor:'pointer',
+                    boxShadow: form.tag===t.id ? `2px 2px 0 ${ink}` : `2px 2px 0 ${ink}`,
+                  }}>{t.l}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" disabled={!canSubmit}
+          style={{
+            marginTop:22, width:'100%', background: canSubmit ? ink : 'rgba(31,24,19,0.35)',
+            color: cream, border:`2px solid ${ink}`, padding:'14px', borderRadius:10,
+            fontFamily:'"Bebas Neue", Impact, sans-serif', fontSize:22, letterSpacing:'0.12em',
+            cursor: canSubmit ? 'pointer' : 'not-allowed', boxShadow:`4px 4px 0 ${red}`,
+          }}>★ BÚA TIL SPJALD ★</button>
+      </form>
     </div>
   );
 }
@@ -375,7 +496,7 @@ function Hex({ value, label, color }) {
 // =====================================================================
 // LINEUP SCREEN — interactive
 // =====================================================================
-function LineupScreen({ signedIds, lineup, setLineup, formation, setFormation, onPickSlot, pickingSlot }) {
+function LineupScreen({ players, signedIds, lineup, setLineup, formation, setFormation, onPickSlot, pickingSlot }) {
   const slots = FORMATIONS[formation];
   const onPitchIds = new Set(Object.values(lineup));
   const pitchWrapRef = useRef(null);
@@ -408,7 +529,7 @@ function LineupScreen({ signedIds, lineup, setLineup, formation, setFormation, o
             <Pitch>
               {slots.map(slot => {
                 const playerId = lineup[slot.id];
-                const player = playerId ? (PLAYERS.find(p=>p.id===playerId) || UNITED_SQUAD.find(p=>p.id===playerId)) : null;
+                const player = playerId ? (players.find(p=>p.id===playerId) || UNITED_SQUAD.find(p=>p.id===playerId)) : null;
                 const isNew = playerId ? signedIds.includes(playerId) : false;
                 // horizontal pitch: rotate the vertical coord system
                 const x = 100 - slot.y;
@@ -456,6 +577,7 @@ function LineupScreen({ signedIds, lineup, setLineup, formation, setFormation, o
 
       {/* Roster panel */}
       <RosterPanel
+        players={players}
         signedIds={signedIds}
         onPitchIds={onPitchIds}
         pickingSlot={pickingSlot}
@@ -482,8 +604,8 @@ function LineupScreen({ signedIds, lineup, setLineup, formation, setFormation, o
   );
 }
 
-function RosterPanel({ signedIds, onPitchIds, pickingSlot, onPlace, onClearSlot }) {
-  const signings = signedIds.map(id => PLAYERS.find(p=>p.id===id)).filter(Boolean);
+function RosterPanel({ players, signedIds, onPitchIds, pickingSlot, onPlace, onClearSlot }) {
+  const signings = signedIds.map(id => players.find(p=>p.id===id)).filter(Boolean);
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12, minHeight:0 }}>
       {/* Picking banner */}
@@ -555,7 +677,7 @@ function ChipPick({ p, isNew, disabled, onClick, size=68 }) {
 // =====================================================================
 // EXPORT SCREEN — matchday programme poster, with download trigger
 // =====================================================================
-function ExportScreen({ signedIds, lineup, formation }) {
+function ExportScreen({ players, signedIds, lineup, formation }) {
   const [status, setStatus] = useState('idle'); // idle | working | done | error
   const wrapRef = useRef(null);
   const posterRef = useRef(null);
@@ -607,7 +729,7 @@ function ExportScreen({ signedIds, lineup, formation }) {
       <div ref={wrapRef} style={{ width:'100%', maxWidth:1080, height: 1350*scale + 8, overflow:'hidden', display:'flex', justifyContent:'center' }}>
         <div style={{ transform:`scale(${scale})`, transformOrigin:'top center' }}>
           <div ref={posterRef}>
-            <PosterCard signedIds={signedIds} lineup={lineup} formation={formation} />
+            <PosterCard players={players} signedIds={signedIds} lineup={lineup} formation={formation} />
           </div>
         </div>
       </div>
@@ -615,7 +737,7 @@ function ExportScreen({ signedIds, lineup, formation }) {
   );
 }
 
-function PosterCard({ signedIds, lineup, formation }) {
+function PosterCard({ players, signedIds, lineup, formation }) {
   const slots = FORMATIONS[formation];
   return (
     <div style={{
@@ -645,7 +767,7 @@ function PosterCard({ signedIds, lineup, formation }) {
               {slots.map(slot => {
                 const playerId = lineup[slot.id];
                 if (!playerId) return null;
-                const player = PLAYERS.find(p=>p.id===playerId) || UNITED_SQUAD.find(p=>p.id===playerId);
+                const player = players.find(p=>p.id===playerId) || UNITED_SQUAD.find(p=>p.id===playerId);
                 const isNew = signedIds.includes(playerId);
                 return (
                   <div key={slot.id} style={{ position:'absolute', left:`${slot.x}%`, top:`${slot.y}%`, transform:'translate(-50%,-50%)' }}>
@@ -661,7 +783,7 @@ function PosterCard({ signedIds, lineup, formation }) {
         <div style={{ marginTop:24, display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
           {[
             { l:'FORMATION', v:formation, c:cream },
-            { l:'SPENT',     v:`£${sum(signedIds)}M`, c:gold },
+            { l:'SPENT',     v:`£${sum(signedIds, players)}M`, c:gold },
             { l:'NEW SIGNINGS', v:`${Object.values(lineup).filter(id => signedIds.includes(id)).length}/11`, c:red },
           ].map((s,i)=>(
             <div key={i} style={{
@@ -686,39 +808,60 @@ function PosterCard({ signedIds, lineup, formation }) {
 // APP
 // =====================================================================
 function App() {
-  const [signedIds, setSignedIds] = useState(window.DK.SELECTED_IDS);
+  const [customPlayers, setCustomPlayers] = useState(() => loadCustomPlayers());
+  const players = useMemo(() => [...PLAYERS, ...customPlayers], [customPlayers]);
+  const [signedIds, setSignedIds] = useState(() => loadSigned(window.DK.SELECTED_IDS));
   const [formation, setFormation] = useState('4-2-3-1');
   const [tab, setTab] = useState('market');
   const [statsId, setStatsId] = useState(null);
   const [pickingSlot, setPickingSlot] = useState(null);
-  const [lineup, setLineup] = useState(() => autoLineup('4-2-3-1', window.DK.SELECTED_IDS, PLAYERS));
+  const [showAdd, setShowAdd] = useState(false);
+  const [lineup, setLineup] = useState(() =>
+    autoLineup('4-2-3-1', loadSigned(window.DK.SELECTED_IDS), [...PLAYERS, ...loadCustomPlayers()])
+  );
 
-  // re-auto when formation changes (only fill empty slots, keep manual placements where possible)
+  // persist signings
+  useEffect(() => { saveSigned(signedIds); }, [signedIds]);
+  // persist custom players
+  useEffect(() => { saveCustomPlayers(customPlayers); }, [customPlayers]);
+
+  // re-auto when formation changes
   useEffect(() => {
-    setLineup(autoLineup(formation, signedIds, PLAYERS));
+    setLineup(autoLineup(formation, signedIds, players));
     setPickingSlot(null);
   }, [formation]);
 
-  // when a signing is added, prefer to slot it in their natural role if open
   function toggleSign(id) {
     setSignedIds(prev => {
-      let next;
       if (prev.includes(id)) {
-        next = prev.filter(x => x !== id);
-        // remove from lineup if present
         setLineup(L => {
           const m = { ...L };
           for (const k of Object.keys(m)) if (m[k]===id) delete m[k];
           return m;
         });
-      } else {
-        next = [...prev, id];
+        return prev.filter(x => x !== id);
       }
-      return next;
+      return [...prev, id];
     });
   }
 
-  const statsPlayer = statsId ? PLAYERS.find(p=>p.id===statsId) : null;
+  function addCustom(form) {
+    const p = makeCustomPlayer(form);
+    setCustomPlayers(prev => [...prev, p]);
+    setShowAdd(false);
+  }
+
+  function deleteCustom(id) {
+    setCustomPlayers(prev => prev.filter(p => p.id !== id));
+    setSignedIds(prev => prev.filter(x => x !== id));
+    setLineup(L => {
+      const m = { ...L };
+      for (const k of Object.keys(m)) if (m[k]===id) delete m[k];
+      return m;
+    });
+  }
+
+  const statsPlayer = statsId ? players.find(p=>p.id===statsId) : null;
 
   return (
     <div style={{
@@ -734,18 +877,22 @@ function App() {
       `}</style>
 
       <div style={{ position:'relative', zIndex:2 }}>
-        <TopBar signedIds={signedIds} tab={tab} setTab={setTab} />
+        <TopBar signedIds={signedIds} players={players} tab={tab} setTab={setTab} />
 
         {tab === 'market' && (
           <MarketScreen
+            players={players}
             signedIds={signedIds}
             onToggle={toggleSign}
             onOpenStats={setStatsId}
+            onAddClick={() => setShowAdd(true)}
+            onDeleteCustom={deleteCustom}
           />
         )}
 
         {tab === 'lineup' && (
           <LineupScreen
+            players={players}
             signedIds={signedIds}
             lineup={lineup}
             setLineup={setLineup}
@@ -757,7 +904,7 @@ function App() {
         )}
 
         {tab === 'export' && (
-          <ExportScreen signedIds={signedIds} lineup={lineup} formation={formation} />
+          <ExportScreen players={players} signedIds={signedIds} lineup={lineup} formation={formation} />
         )}
 
         <StatsModal
@@ -766,6 +913,8 @@ function App() {
           onToggle={toggleSign}
           signed={statsId ? signedIds.includes(statsId) : false}
         />
+
+        {showAdd && <AddPlayerModal onClose={() => setShowAdd(false)} onAdd={addCustom} />}
       </div>
     </div>
   );
