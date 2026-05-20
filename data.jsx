@@ -247,7 +247,7 @@ const TAG_META = {
   young:   { label:'Ungstirni',   color:'#22c55e' },
 };
 
-const BUDGET_TOTAL = 350;
+const BUDGET_TOTAL = 250;
 const SELECTED_IDS = [];
 
 // Current Manchester United squad (2025/26). Updated for the post-summer-2025 reality:
