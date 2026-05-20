@@ -114,7 +114,7 @@ function autoLineup(formation, signedIds, allPlayers) {
 // =====================================================================
 // TOP BAR
 // =====================================================================
-function TopBar({ signedIds, players, tab, setTab, managerName, onEditName }) {
+function TopBar({ signedIds, players, tab, setTab, managerName, onEditName, onClear }) {
   const spent = sum(signedIds, players);
   const remaining = BUDGET_TOTAL - spent;
   const pct = (spent/BUDGET_TOTAL) * 100;
@@ -170,16 +170,31 @@ function TopBar({ signedIds, players, tab, setTab, managerName, onEditName }) {
         ))}
       </div>
 
-      {/* Wallet */}
-      <div style={{ background:`linear-gradient(135deg, ${gold}, #f5d35c)`, border:`2px solid ${ink}`, padding:'8px 14px', borderRadius:10, transform:'rotate(2deg)', boxShadow:`3px 3px 0 ${ink}`, minWidth:170 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', fontSize:9, letterSpacing:'0.18em', fontWeight:700 }}>
-          <span>WALLET</span><span>{Math.round(pct)}% USED</span>
+      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+        {signedIds.length > 0 && (
+          <button
+            onClick={() => { if (confirm(`Eyða öllum ${signedIds.length} kaupum og byrja upp á nýtt?`)) onClear(); }}
+            title="Hreinsa allan hópinn"
+            style={{
+              background:cream2, color:ink, border:`2px solid ${ink}`,
+              padding:'8px 14px', borderRadius:8,
+              fontFamily:'"Bebas Neue", Impact, sans-serif', fontSize:14, letterSpacing:'0.12em',
+              cursor:'pointer', transform:'rotate(-1.5deg)',
+              boxShadow:`2px 2px 0 ${ink}`,
+            }}>↺ CLEAR</button>
+        )}
+
+        {/* Wallet */}
+        <div style={{ background:`linear-gradient(135deg, ${gold}, #f5d35c)`, border:`2px solid ${ink}`, padding:'8px 14px', borderRadius:10, transform:'rotate(2deg)', boxShadow:`3px 3px 0 ${ink}`, minWidth:170 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:9, letterSpacing:'0.18em', fontWeight:700 }}>
+            <span>WALLET</span><span>{Math.round(pct)}% USED</span>
+          </div>
+          <div style={{ fontFamily:'"Bebas Neue", Impact, sans-serif', fontSize:32, lineHeight:1, color:ink }}>£{remaining}m left</div>
+          <div style={{ height:5, background:'rgba(31,24,19,0.18)', borderRadius:99, marginTop:4 }}>
+            <div style={{ width:`${Math.min(100, pct)}%`, height:'100%', background: pct>100 ? red : ink, borderRadius:99 }} />
+          </div>
+          <div style={{ fontSize:9, marginTop:3, fontWeight:600 }}>spent £{spent}m / £{BUDGET_TOTAL}m</div>
         </div>
-        <div style={{ fontFamily:'"Bebas Neue", Impact, sans-serif', fontSize:32, lineHeight:1, color:ink }}>£{remaining}m left</div>
-        <div style={{ height:5, background:'rgba(31,24,19,0.18)', borderRadius:99, marginTop:4 }}>
-          <div style={{ width:`${Math.min(100, pct)}%`, height:'100%', background: pct>100 ? red : ink, borderRadius:99 }} />
-        </div>
-        <div style={{ fontSize:9, marginTop:3, fontWeight:600 }}>spent £{spent}m / £{BUDGET_TOTAL}m</div>
       </div>
     </div>
   );
@@ -960,6 +975,7 @@ function App() {
           setTab={setTab}
           managerName={managerName}
           onEditName={() => setShowName(true)}
+          onClear={() => { setSignedIds([]); setLineup(autoLineup(formation, [], players)); setPickingSlot(null); }}
         />
 
         {tab === 'market' && (
