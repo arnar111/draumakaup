@@ -10,69 +10,6 @@ const red = '#c52a1c';
 const gold = '#d4a017';
 const navy = '#1b2a4e';
 
-// ---- Wikipedia thumbnail loader with localStorage cache ----
-const PHOTO_CACHE_PREFIX = 'dk:photo:v1:';
-const _inflight = new Map();
-
-function fetchWikiThumb(title) {
-  if (!title) return Promise.resolve('');
-  if (_inflight.has(title)) return _inflight.get(title);
-  const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
-  const p = fetch(url, { headers: { 'Accept': 'application/json' } })
-    .then(r => r.ok ? r.json() : null)
-    .then(d => {
-      const u = (d && d.thumbnail && d.thumbnail.source) || '';
-      try { localStorage.setItem(PHOTO_CACHE_PREFIX + title, u); } catch {}
-      return u;
-    })
-    .catch(() => {
-      try { localStorage.setItem(PHOTO_CACHE_PREFIX + title, ''); } catch {}
-      return '';
-    })
-    .finally(() => { _inflight.delete(title); });
-  _inflight.set(title, p);
-  return p;
-}
-
-function usePlayerPhoto(wiki) {
-  const cached = React.useMemo(() => {
-    if (!wiki) return '';
-    try { return localStorage.getItem(PHOTO_CACHE_PREFIX + wiki); } catch { return null; }
-  }, [wiki]);
-  const [url, setUrl] = React.useState(cached);
-  React.useEffect(() => {
-    if (!wiki) { setUrl(''); return; }
-    if (cached !== null && cached !== undefined) return;
-    let alive = true;
-    fetchWikiThumb(wiki).then(u => { if (alive) setUrl(u); });
-    return () => { alive = false; };
-  }, [wiki, cached]);
-  return url;
-}
-
-function PlayerPhoto({ p, fallbackSize }) {
-  const url = usePlayerPhoto(p.wiki);
-  if (url) {
-    return (
-      <img
-        src={url}
-        crossOrigin="anonymous"
-        alt={p.name}
-        draggable={false}
-        style={{
-          width: '94%', height: '94%', objectFit: 'cover', objectPosition: 'center 18%',
-          borderRadius: 6, filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.35))',
-          background: 'rgba(0,0,0,0.12)',
-        }}
-        onError={e => { e.currentTarget.style.display = 'none'; }}
-      />
-    );
-  }
-  return (
-    <div style={{ fontSize: fallbackSize, fontWeight:900, opacity:0.85, letterSpacing:'-0.04em', textShadow:'0 4px 16px rgba(0,0,0,0.3)' }}>{p.initials}</div>
-  );
-}
-
 const RARITY = {
   linked:  { name:'TARGET',    grad:'linear-gradient(135deg, #c52a1c 0%, #f96e2a 45%, #ffd97a 100%)', text:'#1f1813', border:'#d4a017' },
   leaving: { name:'AVAILABLE', grad:'linear-gradient(135deg, #d4a017 0%, #ffe24a 100%)',              text:'#1f1813', border:'#a87d10' },
@@ -86,6 +23,7 @@ function FutCard({ p, w=200, big=false, isUnited=false }) {
   const r = isUnited ? RARITY.united : RARITY[p.tag];
   const fontSize = big ? 1.4 : 1;
   const rating = p.rating || Math.round(80 + (p.price ? Math.min(12, p.price/14) : 4));
+  const priceLabel = p.price > 0 ? `£${p.price}m` : 'FREE';
   return (
     <div style={{
       width: w, aspectRatio: '2/3',
@@ -98,47 +36,87 @@ function FutCard({ p, w=200, big=false, isUnited=false }) {
       fontFamily:'"Bebas Neue", "Oswald", Impact, sans-serif',
       overflow:'hidden',
       border:`2px solid ${r.border}`,
+      display:'flex', flexDirection:'column',
+      boxSizing:'border-box',
     }}>
+      {/* holo shine */}
       <div style={{ position:'absolute', inset:0, background:'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%)', pointerEvents:'none' }} />
       <div style={{ position:'absolute', inset:0, background:'repeating-linear-gradient(180deg, transparent 0 3px, rgba(255,255,255,0.04) 3px 4px)', pointerEvents:'none' }} />
 
+      {/* Header: rating + pos | rarity-vertical */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', position:'relative' }}>
         <div>
-          <div style={{ fontSize: 48*fontSize, fontWeight:900, lineHeight:0.85 }}>{rating}</div>
-          <div style={{ fontSize: 18*fontSize, fontWeight:700, marginTop:-2 }}>{p.pos}</div>
+          <div style={{ fontSize: 44*fontSize, fontWeight:900, lineHeight:0.85 }}>{rating}</div>
+          <div style={{ fontSize: 16*fontSize, fontWeight:700, marginTop:-2 }}>{p.pos}</div>
         </div>
-        <div style={{ fontSize:11*fontSize, fontWeight:700, letterSpacing:'0.1em', writingMode:'vertical-rl', transform:'rotate(180deg)', opacity:0.7 }}>{r.name}</div>
+        <div style={{ fontSize:10*fontSize, fontWeight:700, letterSpacing:'0.1em', writingMode:'vertical-rl', transform:'rotate(180deg)', opacity:0.6 }}>{r.name}</div>
       </div>
 
+      {/* Initials portrait — flex 1 to fill remaining vertical space */}
       <div style={{
-        marginTop:8*fontSize, aspectRatio:'1/1',
-        background:`radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 60%)`,
-        display:'grid', placeItems:'center', position:'relative',
+        flex:1, minHeight:0,
+        margin:`${6*fontSize}px 0`,
+        background:'radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 65%)',
+        position:'relative',
+        display:'grid', placeItems:'center',
       }}>
-        <PlayerPhoto p={p} fallbackSize={96*fontSize} />
-        <div style={{ position:'absolute', bottom:0, right:0, fontSize:9*fontSize, fontWeight:700, letterSpacing:'0.15em', background:'rgba(0,0,0,0.55)', padding:'2px 6px', borderRadius:4, color:'#fff', zIndex:2 }}>{p.nat}</div>
+        <div style={{
+          fontSize: 76*fontSize, fontWeight:900, opacity:0.95, letterSpacing:'-0.04em',
+          textShadow:'0 4px 18px rgba(0,0,0,0.4)', lineHeight:1,
+        }}>{p.initials}</div>
+        <div style={{
+          position:'absolute', bottom:0, right:0,
+          fontSize:9*fontSize, fontWeight:700, letterSpacing:'0.15em',
+          background:'rgba(0,0,0,0.6)', padding:'2px 6px', borderRadius:4, color:'#fff',
+        }}>{p.nat}</div>
       </div>
 
+      {/* Name + Club + Price (always visible) */}
       <div style={{
-        marginTop:8*fontSize, textAlign:'center', fontSize:18*fontSize, fontWeight:700,
-        letterSpacing:'0.02em', borderTop:'1.5px solid rgba(0,0,0,0.25)', paddingTop:6*fontSize,
-        textTransform:'uppercase',
-      }}>{p.short.toUpperCase()}</div>
+        borderTop:`1.5px solid rgba(0,0,0,0.28)`,
+        paddingTop: 5*fontSize,
+        display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:6,
+        position:'relative',
+      }}>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{
+            fontSize: 15*fontSize, fontWeight:700, letterSpacing:'0.02em',
+            textTransform:'uppercase', lineHeight:1.02,
+            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+          }}>{p.short.toUpperCase()}</div>
+          <div style={{
+            fontSize: 8.5*fontSize, fontWeight:600, letterSpacing:'0.05em',
+            textTransform:'uppercase', marginTop:1, opacity:0.75,
+            fontFamily:'"Oswald", Impact, sans-serif',
+            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+          }}>{p.club}</div>
+        </div>
+        <div style={{
+          background:'rgba(31,24,19,0.88)', color:'#fff7da',
+          padding:'3px 8px', borderRadius:5,
+          fontFamily:'"Bebas Neue", Impact, sans-serif',
+          fontSize: 14*fontSize, fontWeight:900, letterSpacing:'0.04em',
+          whiteSpace:'nowrap', flexShrink:0,
+          border:'1.5px solid rgba(255,247,218,0.5)',
+        }}>{priceLabel}</div>
+      </div>
 
-      <div style={{ marginTop:6*fontSize, display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:4, fontSize:10*fontSize }}>
+      {/* Radar — 6 attributes in two compact rows */}
+      <div style={{
+        marginTop: 5*fontSize,
+        display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'2px 6px',
+        fontSize: 9*fontSize,
+      }}>
         {Object.entries(p.radar).slice(0,6).map(([k,v]) => (
-          <div key={k} style={{ display:'flex', justifyContent:'space-between', fontFamily:'"Oswald", Impact, sans-serif' }}>
+          <div key={k} style={{
+            display:'flex', justifyContent:'space-between',
+            fontFamily:'"Oswald", Impact, sans-serif',
+          }}>
             <span style={{ fontWeight:900 }}>{v}</span>
-            <span style={{ opacity:0.7, letterSpacing:'0.04em' }}>{k.slice(0,3).toUpperCase()}</span>
+            <span style={{ opacity:0.65, letterSpacing:'0.04em' }}>{k.slice(0,3).toUpperCase()}</span>
           </div>
         ))}
       </div>
-
-      {p.price > 0 && (
-        <div style={{ position:'absolute', bottom: -8, left:'50%', transform:'translateX(-50%)', background:ink, color:'#fff7da', padding:'4px 12px', borderRadius:6, fontSize:14*fontSize, fontWeight:900, letterSpacing:'0.05em' }}>
-          £{p.price}m
-        </div>
-      )}
     </div>
   );
 }
