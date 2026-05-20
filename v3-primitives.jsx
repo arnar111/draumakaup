@@ -18,6 +18,36 @@ const RARITY = {
   united:  { name:'SQUAD',     grad:'linear-gradient(135deg, #4a0a05 0%, #c52a1c 50%, #ff5040 100%)',  text:'#fff7da', border:'#fff7da' },
 };
 
+// Player portrait — tries photos/<id>.png (committed at build time from
+// TheSportsDB), falls back to large initials on 404 or load error.
+function PlayerArt({ p, fontSize }) {
+  const [failed, setFailed] = React.useState(false);
+  if (failed || !p.id || p.custom) {
+    return (
+      <div style={{
+        fontSize: 76*fontSize, fontWeight:900, opacity:0.95, letterSpacing:'-0.04em',
+        textShadow:'0 4px 18px rgba(0,0,0,0.4)', lineHeight:1,
+      }}>{p.initials}</div>
+    );
+  }
+  return (
+    <img
+      src={`photos/${p.id}.png`}
+      alt={p.name}
+      draggable={false}
+      onError={() => setFailed(true)}
+      style={{
+        position:'absolute', inset:0,
+        width:'100%', height:'100%',
+        objectFit:'contain',
+        objectPosition:'center bottom',
+        pointerEvents:'none',
+        filter:'drop-shadow(0 4px 12px rgba(0,0,0,0.35))',
+      }}
+    />
+  );
+}
+
 // FutCard — full size sticker
 function FutCard({ p, w=200, big=false, isUnited=false }) {
   const r = isUnited ? RARITY.united : RARITY[p.tag];
@@ -52,22 +82,21 @@ function FutCard({ p, w=200, big=false, isUnited=false }) {
         <div style={{ fontSize:10*fontSize, fontWeight:700, letterSpacing:'0.1em', writingMode:'vertical-rl', transform:'rotate(180deg)', opacity:0.6 }}>{r.name}</div>
       </div>
 
-      {/* Initials portrait — flex 1 to fill remaining vertical space */}
+      {/* Portrait — flex 1 to fill remaining vertical space */}
       <div style={{
         flex:1, minHeight:0,
         margin:`${6*fontSize}px 0`,
         background:'radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 65%)',
         position:'relative',
         display:'grid', placeItems:'center',
+        overflow:'hidden',
       }}>
-        <div style={{
-          fontSize: 76*fontSize, fontWeight:900, opacity:0.95, letterSpacing:'-0.04em',
-          textShadow:'0 4px 18px rgba(0,0,0,0.4)', lineHeight:1,
-        }}>{p.initials}</div>
+        <PlayerArt p={p} fontSize={fontSize} />
         <div style={{
           position:'absolute', bottom:0, right:0,
           fontSize:9*fontSize, fontWeight:700, letterSpacing:'0.15em',
           background:'rgba(0,0,0,0.6)', padding:'2px 6px', borderRadius:4, color:'#fff',
+          zIndex:2,
         }}>{p.nat}</div>
       </div>
 
