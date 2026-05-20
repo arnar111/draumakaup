@@ -248,7 +248,7 @@ const TAG_META = {
 };
 
 const BUDGET_TOTAL = 350;
-const SELECTED_IDS = ['anderson','wharton','branthwaite','adeyemi','lewisskelly'];
+const SELECTED_IDS = [];
 
 // Current Manchester United squad (2025/26). Updated for the post-summer-2025 reality:
 // new arrivals Cunha, Mbeumo, Sesko, Lammens, Dorgu, Heaven; Garnacho gone (Chelsea),
